@@ -24,114 +24,14 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
  	
     }
     stages {
-        stage("Build Prod") {
-		when {
-                expression { 
-                   return params.BUILD_FOR_PRODUCTION == true
-                }
-            }
-            steps {
-		
-		git 'https://github.com/EmilBC/PipeLine1Test.git'
-		
-		    
-                echo "Build stage Prod."
-		    script {
-               if (params.BUILD_LANGUAGE==""){
-		       if(params.CHECK_TEST==false){
-		sh "'${mvnHome}/bin/mvn' -B -DskipTests clean package"
-		       }else{
-			    sh "'${mvnHome}/bin/mvn' -B  clean package"   
-		       }
-		       echo "Build stage Prod. java" 
-		} else {
-		    echo "Build stage Prod. " 
-		}
-		    }
-            }
-	}
-	      stage("Build Prod Dev") {
-	when {
-                expression { 
-                  return params.BUILD_FOR_PRODUCTION == false
-                }
-            }
-		 steps {
-		
-		git 'https://github.com/EmilBC/PipeLine1Test.git'
-                echo "Build stage Dev"
-         script{      
- if(params.CHECK_TEST==false){
-		bat "${mvnHome}\\bin\\mvn.cmd -B -DskipTests clean package"
-		       }else{
-			 bat "${mvnHome}\\bin\\mvn.cmd -B  clean package"   
-		       }
-	 }
-            }
-        }
-
-stage('SonarQube Analysis') {
-	   steps{
-		       
-      script{
-	 if (params.RUN_SONNAR ==true){
-      withSonarQubeEnv() {
-      bat "${mvnHome}\\bin\\mvn clean verify sonar:sonar -Dsonar.projectKey=testoutsidegit -Dsonar.projectName='testoutsidegit'"
+     
+	
+stage('Execute SQL File') {
+      steps {
+        bat "mysql -u root -proot world -h localhost -P 3306 < file.sql"
+	    
       }
-      }
-      }
-	    }
-    }	
-  
-  stage("Publish to Nexus Repository Manager") {
-            steps {
-                script {
-                    pom = readMavenPom file: "pom.xml";
-                    filesByGlob = findFiles(glob: "target/*.${pom.packaging}");
-                 
-                    artifactPath = filesByGlob[0].path;
-                    artifactExists = fileExists artifactPath;
-                    if(artifactExists) {
-                       
-                        nexusArtifactUploader(
-                            nexusVersion: NEXUS_VERSION,
-                            protocol: NEXUS_PROTOCOL,
-                            nexusUrl: NEXUS_URL,
-                            groupId: pom.groupId,
-                            version: pom.version,
-                            repository: NEXUS_REPOSITORY,
-                            credentialsId: NEXUS_CREDENTIAL_ID,
-                            artifacts: [
-                                [artifactId: pom.artifactId,
-                                classifier: '',
-                                file: artifactPath,
-                                type: pom.packaging],
-                                [artifactId: pom.artifactId,
-                                classifier: '',
-                                file: "pom.xml",
-                                type: "pom"]
-                            ]
-                        );
-                    } else {
-                      
-                    }
-                }
-            }
-  }
-
- stage('Build Docker Image') {
-	    steps{
-     bat "docker -H  tcp://4.tcp.eu.ngrok.io:11932   build -t docgen:${env.BUILD_NUMBER} ."
-	   }
     }
-    
-    stage('Deploy Docker Image'){
-	    steps{
-      	echo "Docker Image Tag Name: ${dockerImageTag}"
-	bat "docker -H   tcp://4.tcp.eu.ngrok.io:11932   run  --name docgen:${env.BUILD_NUMBER} -d -p 2222:2222 docgen:${env.BUILD_NUMBER} auto_assign_name: false"
-	    }
-    }
-
 
 
 	    
