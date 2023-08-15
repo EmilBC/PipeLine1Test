@@ -82,10 +82,10 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
     
 
 	    
-      stage('SCM') {
-	      steps{
-	  checkout scm
-	      }    }
+     // stage('SCM') {
+	//      steps{
+	  //checkout scm
+	    //  }    }
     stage('SonarQube Analysis') {
 	   steps{
 		       
