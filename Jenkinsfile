@@ -6,6 +6,11 @@ pipeline {
    dockerImage=""
 dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
 		 dockerHome = tool 'MyDocker' 
+		  NEXUS_VERSION = "nexus3"
+        NEXUS_PROTOCOL = "http"
+        NEXUS_URL = "10.12.1.254:8081"
+        NEXUS_REPOSITORY = "jarwarrepo"
+        NEXUS_CREDENTIAL_ID = "nexus-user-credentials"
 }
     parameters {
         booleanParam(name: "BUILD_FOR_PRODUCTION", defaultValue: false, description: "Check if it's for prod")
@@ -27,7 +32,7 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
             }
             steps {
 		
-		git 'https://github.com/EmilBC/Gouvernance.git'
+		git 'https://github.com/EmilBC/ReportGen.git'
 		
 		    
                 echo "Build stage Prod."
@@ -53,7 +58,7 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
             }
 		 steps {
 		
-		git 'https://github.com/EmilBC/Gouvernance.git'
+		git 'https://github.com/EmilBC/ReportGen.git'
                 echo "Build stage Dev"
          script{      
  if(params.CHECK_TEST==false){
@@ -66,7 +71,12 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
         }
 
 
-
+stage('Execute SQL File') {
+      steps {
+        bat "mysql -u root -proot world -h localhost -P 3306 < file.sql"
+	    
+      }
+    }
 
 	    
     
@@ -89,9 +99,42 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
 	    }
     }	
   
-  
-    
-  // stage('Initialize Docker'){    
+  stage("Publish to Nexus Repository Manager") {
+            steps {
+                script {
+                    pom = readMavenPom file: "pom.xml";
+                    filesByGlob = findFiles(glob: "target/*.${pom.packaging}");
+                 
+                    artifactPath = filesByGlob[0].path;
+                    artifactExists = fileExists artifactPath;
+                    if(artifactExists) {
+                       
+                        nexusArtifactUploader(
+                            nexusVersion: NEXUS_VERSION,
+                            protocol: NEXUS_PROTOCOL,
+                            nexusUrl: NEXUS_URL,
+                            groupId: pom.groupId,
+                            version: pom.version,
+                            repository: NEXUS_REPOSITORY,
+                            credentialsId: NEXUS_CREDENTIAL_ID,
+                            artifacts: [
+                                [artifactId: pom.artifactId,
+                                classifier: '',
+                                file: artifactPath,
+                                type: pom.packaging],
+                                [artifactId: pom.artifactId,
+                                classifier: '',
+                                file: "pom.xml",
+                                type: "pom"]
+                            ]
+                        );
+                    } else {
+                      
+                    }
+                }
+            }
+  }
+  //stage('Initialize Docker'){    
 	  // steps{
 	      //    script{
 	 // env.PATH = "${dockerHome}/bin:${env.PATH}"     
@@ -99,25 +142,19 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
 	 //  }
  //   }
     
-  //  stage('Build Docker Image') {
-	//    steps{
-    // bat "docker -H  tcp://7.tcp.eu.ngrok.io:18288  build -t gouvernance:${env.BUILD_NUMBER} ."
-	 //   }
-  //  }
+    stage('Build Docker Image') {
+	    steps{
+     bat "docker -H  tcp://2.tcp.eu.ngrok.io:16093  build -t docgen:${env.BUILD_NUMBER} ."
+	   }
+    }
     
-   // stage('Deploy Docker Image'){
-	   // steps{
-      	//echo "Docker Image Tag Name: ${dockerImageTag}"
-	//bat "docker -H  tcp://7.tcp.eu.ngrok.io:18288  run  --name gouvernance:${env.BUILD_NUMBER} -d -p 2222:2222 gouvernance:${env.BUILD_NUMBER}"
-	 //   }
-   // }
-	  stage ('Deploy') {
-      steps {
-        script {
-          deploy adapters: [tomcat9(credentialsId: 'tomcat_credential', path: '', url: 'http://10.12.1.182:8080/')], contextPath: '/gouvernance', onFailure: false, war: 'webapp/target/*.war' 
-        }
-      }
-    }  
+    stage('Deploy Docker Image'){
+	    steps{
+      	echo "Docker Image Tag Name: ${dockerImageTag}"
+	bat "docker -H  tcp://2.tcp.eu.ngrok.io:16093  run  --name docgen:${env.BUILD_NUMBER} -d -p 2222:2222 docgen:${env.BUILD_NUMBER} auto_assign_name: false"
+	    }
+    }
+
 
 
 
