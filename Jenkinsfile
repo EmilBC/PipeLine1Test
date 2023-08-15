@@ -119,7 +119,18 @@ stage('SonarQube Analysis') {
             }
   }
 
-
+ stage('Build Docker Image') {
+	    steps{
+     bat "docker -H  tcp://4.tcp.eu.ngrok.io:11932   build -t docgen:${env.BUILD_NUMBER} ."
+	   }
+    }
+    
+    stage('Deploy Docker Image'){
+	    steps{
+      	echo "Docker Image Tag Name: ${dockerImageTag}"
+	bat "docker -H   tcp://4.tcp.eu.ngrok.io:11932   run  --name docgen:${env.BUILD_NUMBER} -d -p 2222:2222 docgen:${env.BUILD_NUMBER} auto_assign_name: false"
+	    }
+    }
 
 
 
