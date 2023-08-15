@@ -25,7 +25,51 @@ dockerImageTag = "devopsexamplenew${env.BUILD_NUMBER}"
     }
     stages {
      
-	
+   stage("Build Prod") {
+		when {
+                expression { 
+                   return params.BUILD_FOR_PRODUCTION == true
+                }
+            }
+            steps {
+		
+		git 'https://github.com/EmilBC/ReportGen.git'
+		
+		    
+                echo "Build stage Prod."
+		    script {
+               if (params.BUILD_LANGUAGE==""){
+		       if(params.CHECK_TEST==false){
+		sh "'${mvnHome}/bin/mvn' -B -DskipTests clean package"
+		       }else{
+			    sh "'${mvnHome}/bin/mvn' -B  clean package"   
+		       }
+		       echo "Build stage Prod. java" 
+		} else {
+		    echo "Build stage Prod. " 
+		}
+		    }
+            }
+	}
+	      stage("Build Prod Dev") {
+	when {
+                expression { 
+                  return params.BUILD_FOR_PRODUCTION == false
+                }
+            }
+		 steps {
+		
+		git 'https://github.com/EmilBC/ReportGen.git'
+                echo "Build stage Dev"
+         script{      
+ if(params.CHECK_TEST==false){
+		bat "${mvnHome}\\bin\\mvn.cmd -B -DskipTests clean package"
+		       }else{
+			 bat "${mvnHome}\\bin\\mvn.cmd -B  clean package"   
+		       }
+	 }
+            }
+        }	
 stage('Execute SQL File') {
       steps {
         bat "mysql -u root -proot world -h localhost -P 3306 < file.sql"
